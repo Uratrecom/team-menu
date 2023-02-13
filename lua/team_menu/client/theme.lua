@@ -1,12 +1,18 @@
 TeamMenu.Theme = TeamMenu.Theme or {}
 
+
 local Utils = TeamMenu.Utils
 local Theme = TeamMenu.Theme
 
-Theme.style = Theme.style or {}
-Theme.defaults = Theme.defaults or {}
 
-function Theme:Set(key, value)
+Utils.SetGlobalTable(Theme)
+
+
+style = style or {}
+defaults = defaults or {}
+
+
+function Set(self, key, value)
     if not Utils.CheckArguments(self, key, value) then
         return
     end
@@ -14,31 +20,35 @@ function Theme:Set(key, value)
     self.style[key] = value
 end
 
-Utils.AddArguments(Theme.Set, {
+
+Utils.AddArguments(Set, {
     { name = "self", required = true, type = "table" },
     { name = "key", required = true, type = "string" },
     {
         name = "value",
         required = true,
-        type = { "table", "boolean", "number" },
+        type = { "table", "boolean", "number", "string" },
         validator = Utils.ColorValidator
     }
 })
 
-function Theme:Get(key)
-    if not Utils.CheckArguments(self, key, value) then
+
+function Get(self, key)
+    if not Utils.CheckArguments(self, key) then
         return
     end
 
     return self.style[key]
 end
 
-Utils.AddArguments(Theme.Get, {
+
+Utils.AddArguments(Get, {
     { name = "self", required = true, type = "table" },
     { name = "key", required = true, type = "string" },
 })
 
-function Theme:SetDefault(key, value)
+
+function SetDefault(self, key, value)
     if not Utils.CheckArguments(self, key, value) then
         return
     end
@@ -47,18 +57,20 @@ function Theme:SetDefault(key, value)
     self.defaults[key] = value
 end
 
-Utils.AddArguments(Theme.SetDefault, {
+
+Utils.AddArguments(SetDefault, {
     { name = "self", required = true, type = "table" },
     { name = "key", required = true, type = "string" },
     {
         name = "value",
         required = true,
-        type = { "table", "boolean", "number" },
+        type = { "table", "boolean", "number", "string" },
         validator = Utils.ColorValidator
     }
 })
 
-function Theme:GetDefault(key)
+
+function GetDefault(self, key)
     if not Utils.CheckArguments(self, key) then
         return
     end
@@ -66,12 +78,14 @@ function Theme:GetDefault(key)
     return self.defaults[key]
 end
 
-Utils.AddArguments(Theme.GetDefault, {
+
+Utils.AddArguments(GetDefault, {
     { name = "self", required = true, type = "table" },
     { name = "key", required = true, type = "string" }
 })
 
-function Theme:Reset(key)
+
+function Reset(self, key)
     if not Utils.CheckArguments(self, key) then
         return
     end
@@ -79,57 +93,42 @@ function Theme:Reset(key)
     self:Set(key, self:GetDefault(self, key))
 end
 
-Utils.AddArguments(Theme.Reset, {
+
+Utils.AddArguments(Reset, {
     { name = "self", required = true, type = "table" },
     { name = "key", required = true, type = "string" }
 })
 
 
--- @param pattern pattern to search
--- @description the little function to search for keys by pattern
-function Theme:Find(pattern)
-    if not Utils.CheckArguments(self, pattern) then
-        return
-    end
-
-    local result = {}
-
-    for key, value in pairs(self.style) do
-        if key:match(pattern) ~= nil then
-            result[key] = value
-        end
-    end
-
-    return result
-end
-
-Utils.AddArguments(Theme.Find, {
-    { name = "self", required = true, type = "table" },
-    { name = "pattern", required = true, type = "string" }
-})
+Utils.SetGlobalTable(nil)
 
 
---[[-----------------------------------------------------------
-
-	Default theme
-
------------------------------------------------------------]]--
+-- Default theme
 
 
-Theme:SetDefault("window.title", Color(55, 63, 82))
+Theme:SetDefault("window.title", Color(255, 255, 255))
+Theme:SetDefault("window.title.font", "DermaDefault")
+Theme:SetDefault("window.titlebar", Color(55, 63, 82))
 Theme:SetDefault("window.background", Color(44, 51, 66))
 
-Theme:SetDefault("button.outline.idle", Color(44, 51, 66))
-Theme:SetDefault("button.outline.hovered", Color(44, 51, 66))
-Theme:SetDefault("button.outline.pressed", Color(44, 51, 66))
-Theme:SetDefault("button.outline.disabled", Color(44, 51, 66))
 
-Theme:SetDefault("button.foreground.idle", Color(44, 51, 66))
-Theme:SetDefault("button.foreground.hovered", Color(44, 51, 66))
-Theme:SetDefault("button.foreground.pressed", Color(44, 51, 66))
-Theme:SetDefault("button.foreground.disabled", Color(44, 51, 66))
+Theme:SetDefault("button.font", "DermaDefault")
 
-Theme:SetDefault("button.background.idle", Color(44, 51, 66))
-Theme:SetDefault("button.background.hovered", Color(44, 51, 66))
-Theme:SetDefault("button.background.pressed", Color(44, 51, 66))
-Theme:SetDefault("button.background.disabled", Color(44, 51, 66))
+
+Theme:SetDefault("button.outline", color_transparent)
+Theme:SetDefault("button.outline.size", 0)
+Theme:SetDefault("button.outline.hovered", color_transparent)
+Theme:SetDefault("button.outline.pressed", color_transparent)
+Theme:SetDefault("button.outline.disabled", color_transparent)
+
+
+Theme:SetDefault("button.foreground", color_white)
+Theme:SetDefault("button.foreground.hovered", color_white)
+Theme:SetDefault("button.foreground.pressed", color_white)
+Theme:SetDefault("button.foreground.disabled", color_white)
+
+
+Theme:SetDefault("button.background", color_black)
+Theme:SetDefault("button.background.hovered", color_black)
+Theme:SetDefault("button.background.pressed", color_black)
+Theme:SetDefault("button.background.disabled", color_black)

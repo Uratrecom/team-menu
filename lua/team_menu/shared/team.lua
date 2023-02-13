@@ -16,9 +16,9 @@ List of available hooks:
 
 
 if SERVER then
-    util.AddNetworkString("Team_Join")
-    util.AddNetworkString("Team_Share")
-    util.AddNetworkString("Team_OnJoin")
+    util.AddNetworkString("TeamMenu_Join")
+    util.AddNetworkString("TeamMenu_Share")
+    util.AddNetworkString("TeamMenu_OnJoin")
 end
 
 
@@ -31,11 +31,13 @@ setmetatable(teams, {
     __newindex = function(self, teamIndex, teamTable)
         rawset(self, teamIndex, teamTable)
 
+
         if teamTable == nil then
             return
         end
 
-        hook.Run("TeamCreated", TeamMenu.Team(teamIndex))
+
+        hook.Run("TeamMenu_TeamCreated", TeamMenu.Team(teamIndex))
     end
 })
 
@@ -376,7 +378,7 @@ Utils.AddArguments(TEAM.GetNWValue, {
 function TEAM:SetNWValues()
     Utils.SetGlobalVarArray(
         "Team." .. tostring(self.index) .. ".Values",
-        table.GetKeys(self:GetCustomTable())
+        table.GetKeys(self:GetValues())
     )
 end
 
@@ -913,7 +915,7 @@ Utils.AddArguments(TeamMenu.Team, {
 })
 
 
-net.Receive("Team_Join", function(_, ply)
+net.Receive("TeamMenu_Join", function(_, ply)
     if not ply then
         return
     end
@@ -931,13 +933,13 @@ net.Receive("Team_Join", function(_, ply)
     team:Join(ply)
 
 
-    net.Start("Team_OnJoin")
+    net.Start("TeamMenu_OnJoin")
     net.WriteInt(teamIndex,  32)
     net.Send(ply)
 end)
 
 
-net.Receive("Team_OnJoin", function(_, ply)
+net.Receive("TeamMenu_OnJoin", function(_, ply)
     if ply then
         return
     end
@@ -946,11 +948,11 @@ net.Receive("Team_OnJoin", function(_, ply)
     local teamIndex = net.ReadInt(32)
 
 
-    hook.Run("OnPlayerJoinTeam", TeamMenu.Team(teamIndex), LocalPlayer())
+    hook.Run("TeamMenu_OnPlayerJoinTeam", TeamMenu.Team(teamIndex), LocalPlayer())
 end)
 
 
-net.Receive("Team_Share", function(_, ply)
+net.Receive("TeamMenu_Share", function(_, ply)
     local teamIndex = net.ReadInt(32)
     local teamTable = net.ReadTable()
     local isRemoved = net.ReadBool()
@@ -974,7 +976,7 @@ net.Receive("Team_Share", function(_, ply)
     team:SafeReplaceTable(teamTable)
 
 
-    hook.Run("TeamUpdated", team, isRemoved)
+    hook.Run("TeamMenu_TeamUpdated", team, isRemoved)
 
 
     if ply then

@@ -6,7 +6,6 @@ local GUI = TeamMenu.GUI
 
 
 Utils.SetGlobalTable(GUI)
-Utils.SetGlobalAvoidColon(true)
 
 
 window = nil
@@ -337,4 +336,3 @@ end)
 
 
 Utils.SetGlobalTable(nil)
-Utils.SetGlobalAvoidColon(false)
