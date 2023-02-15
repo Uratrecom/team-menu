@@ -1,6 +1,6 @@
 {
 	"title": "Team Menu",
 	"type":	"Tool",
-	"tags":	["fun", "roleplay"],
-	"ignore": ["*.jpg", ".git/*", "README.md"]
+	"tags":	[ "fun", "roleplay" ],
+	"ignore": [ "*.jpg", ".git/*", "README.md" ]
 }
