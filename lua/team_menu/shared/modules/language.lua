@@ -69,8 +69,13 @@ function GetCurrentLanguage()
 end
 
 
+function GetLanguageCodes()
+    return table.GetKeys(languages)
+end
+
+
 function IsValid(language)
-    return table.HasValue(languages, language)
+    return table.HasValue(GetLanguageCodes(), language)
 end
 
 
@@ -104,11 +109,6 @@ end
 
 function GetFullName(language)
     return languages[language]
-end
-
-
-function LanguageCodes()
-    return table.GetKeys(languages)
 end
 
 
@@ -155,12 +155,17 @@ function GetPhrase(phrase, language)
     local currentLanguage = GetCurrentLanguage()
 
 
-    if currentLanguage == "auto" and language == nil then
+    if currentLanguage == "auto" and language == nil or language == "auto" then
         return _G.language.GetPhrase(phrase)
     end
 
 
     language = language or currentLanguage
+
+
+    if not IsValid(language) then
+        return phrase
+    end
 
 
     local languagePhrase = Utils.SafeGetTable(cache, language)[phrase]
