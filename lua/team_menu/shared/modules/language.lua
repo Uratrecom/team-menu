@@ -15,7 +15,7 @@ local table = _G.table
 local hook = _G.hook
 
 
-languages = {
+languages = Utils.SafeGetTableValue(_G, "Uratrecom.Language.languages", {
     bg = "Bulgarian",
     cs = "Czech",
     da = "Danish",
@@ -48,10 +48,10 @@ languages = {
     vi = "Vietnamese",
     ["zh-CN"] =	"Chinese Simplified",
     ["zh-TW"] = "Chinese Traditional"
-}
+})
 
 
-cache = {}
+cache = Utils.GetSafeTable(_G, "Uratrecom.Language.cache")
 
 
 function GetGameLanguage()

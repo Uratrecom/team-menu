@@ -43,14 +43,19 @@ function GetTableValue(tbl, path)
 end
 
 
-function SafeGetTable(tbl, path)
+function SafeGetTableValue(tbl, path, default)
     local value = GetTableValue(tbl, path)
 
 
     if value == nil then
-        return SetTableValue(tbl, path, {})
+        return SetTableValue(tbl, path, default)
     end
 
 
     return value
+end
+
+
+function SafeGetTable(tbl, path)
+    return SafeGetTableValue(tbl, path, {})
 end
