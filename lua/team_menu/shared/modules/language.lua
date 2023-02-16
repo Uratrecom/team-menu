@@ -115,23 +115,17 @@ end
 function ParseFile(filename, language)
     local tbl = {}
     local filePath = LocalizationFile(filename, language)
-    local fp = file.Open(filePath, "r", "GAME")
+    local content = file.Read(filePath, "GAME")
 
 
-    if not fp then
+    if not content then
         return
     end
 
 
-    local content = fp:Read()
-
-
-    fp:Close()
-
-
     for line in content:gmatch("[^\r\n]+") do
         if not line:StartWith("#") and line:len() then
-            local key, value = line:match("([%w_%.]+)%s*=%s*(.*)%s*")
+            local key, value = line:match("([%w_%.]+)%s*=%s*(.*)")
 
 
             value = value:Trim()
