@@ -416,6 +416,15 @@ moduleMeta.SERVER = SERVER
 moduleMeta.CLIENT = CLIENT
 
 
+function moduleMeta.__call(self, ...)
+    local __call = rawget(self, "__call")
+    
+    if isfunction(__call) then
+        return __call(...)
+    end
+end
+
+
 function moduleMeta.SetGlobal(key, value)
     _G[key] = value
 end
@@ -554,37 +563,6 @@ function moduleMeta.ModuleExists(moduleName)
 end
 
 
-local postRequireFunctions = {}
-local postRequireCall = false
-
-
-function moduleMeta.PostRequire(func)
-    table.insert(postRequireFunctions, func)
-end
-
-
-local function CallPostRequireFunctions()
-    postRequireCall = true
-
-
-    table.Reverse(postRequireFunctions)
-
-    
-    for _, func in ipairs(postRequireFunctions) do
-        func()
-    end
-
-
-    table.Empty(postRequireFunctions)
-
-
-    postRequireCall = false
-end
-
-
-local deep = 0
-
-
 function moduleMeta.Require(moduleName, ...)
     local moduleFile = TryLoad(moduleName)
 
@@ -610,19 +588,8 @@ function moduleMeta.Require(moduleName, ...)
     setfenv(mod, setmetatable({}, moduleMeta))
 
 
-    deep = deep + 1
-
-
     local result = mod(...)
     local moduleTable = getfenv(mod)
-
-
-    deep = deep - 1
-
-
-    if deep == 0 and not postRequireCall then
-        CallPostRequireFunctions()
-    end
 
 
 	if result == nil and moduleTable._NAME ~= nil then
@@ -631,7 +598,7 @@ function moduleMeta.Require(moduleName, ...)
 
 
 	package.loaded[moduleFile] = result ~= nil and result or true
-	
+
 
     return result
 end

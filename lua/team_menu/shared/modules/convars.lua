@@ -4,6 +4,10 @@ Module("TeamMenu.ConVars")
 local Language = Require("TeamMenu.Language")
 
 
+local CreateConVar = _G.CreateConVar
+local CreateClientConVar = _G.CreateClientConVar
+
+
 local flags = _G.bit.bor(
     _G.FCVAR_ARCHIVE,
     _G.FCVAR_GAMEDLL,
@@ -24,17 +28,27 @@ local function Category(name)
 end
 
 
+function GetConVarDescription(name, lang)
+    return Language.GetPhrase(
+        "team_menu.convars." .. name .. "description",
+        lang or "en"
+    )
+end
+
+
 local function ConVar(name, default, min, max)
     name = "team_menu_" .. name
     
-    convars[name] = _G.CreateConVar(
+
+    convars[name] = CreateConVar(
         name,
         default,
         flags,
-        [[Language.GetPhrase("team_menu.convars." .. name, "en")]],
+        GetConVarDescription(name),
         min,
         max
     )
+
 
     if category ~= nil then
         categories[name] = category
@@ -45,12 +59,13 @@ end
 local function ClientConVar(name, default, min, max)
     name = "team_menu_" .. name
 
-    convars[name] = _G.CreateClientConVar(
+
+    convars[name] = CreateClientConVar(
         name,
         default,
         true,
         true,
-        [[Language.GetPhrase("team_menu.convars." .. name, "en")]],
+        GetConVarDescription(name),
         min,
         max
     )
@@ -62,8 +77,18 @@ local function ClientConVar(name, default, min, max)
 end
 
 
-function Get(name)
+function GetConVar(name)
     return convars["team_menu_" .. name]
+end
+
+
+function GetConVars()
+    return convars
+end
+
+
+function SetBool(name, value)
+    return GetConVar(name):SetBool(value)
 end
 
 
@@ -72,8 +97,18 @@ function GetBool(name)
 end
 
 
+function SetFloat(name, value)
+    return GetConVar(name):SetFloat(value)
+end
+
+
 function GetFloat(name)
     return GetConVar(name):GetFloat()
+end
+
+
+function SetInt(name, value)
+    return GetConVar(name):SetInt(value)
 end
 
 
@@ -82,13 +117,13 @@ function GetInt(name)
 end
 
 
-function GetString(name)
-    return GetConVar(name):GetString()
+function SetString(name, value)
+    return GetConVar(name):SetString(value)
 end
 
 
-function GetConVars()
-    return convars
+function GetString(name)
+    return GetConVar(name):GetString()
 end
 
 
@@ -110,6 +145,15 @@ ClientConVar("hud_show_my_team", "1", 0, 1)
 ClientConVar("hud_show_player_team", "1", 0, 1)
 ClientConVar("hud_show_entity_team", "1", 0, 1)
 ClientConVar("hud_show_entity_relationship", "1", 0, 1)
+ClientConVar("hud_unknown_color_red", "197", 0, 255)
+ClientConVar("hud_unknown_color_green", "198", 0, 255)
+ClientConVar("hud_unknown_color_blue", "86", 0, 255)
+ClientConVar("hud_friend_color_red", "198", 0, 255)
+ClientConVar("hud_friend_color_green", "86", 0, 255)
+ClientConVar("hud_friend_color_blue", "86", 0, 255)
+ClientConVar("hud_enemy_color_red", "99", 0, 255)
+ClientConVar("hud_enemy_color_green", "198", 0, 255)
+ClientConVar("hud_enemy_color_blue", "86", 0, 255)
 
 
 Category("language")
