@@ -1,6 +1,11 @@
 Module("TeamMenu.Theme")
 
 
+local Color = _G.Color
+local color_black = _G.color_black
+local color_white = _G.color_white
+
+
 style = {}
 defaults = {}
 
@@ -27,7 +32,7 @@ end
 
 
 function Reset(key)
-    Set(key, GetDefault(_M, key))
+    Set(key, GetDefault(key))
 end
 
 
