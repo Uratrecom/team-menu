@@ -9,12 +9,32 @@ local rawset = _G.rawset
 local util = _G.util
 local net = _G.net
 local hook = _G.hook
+local tostring = _G.tostring
+local SetGlobalString = _G.SetGlobalString
+local GetGlobalString = _G.GetGlobalString
+local SetGlobalInt = _G.SetGlobalInt
+local GetGlobalInt = _G.GetGlobalInt
+local SetGlobalBool = _G.SetGlobalBool
+local GetGlobalBool = _G.GetGlobalBool
+local SetGlobalVar = _G.SetGlobalVar
+local GetGlobalVar = _G.GetGlobalVar
+local table = _G.table
+local ErrorNoHaltWithStack = _G.ErrorNoHaltWithStack
+local TEAM_CONNECTING = _G.TEAM_CONNECTING
+local TEAM_SPECTATOR = _G.TEAM_SPECTATOR
+local TEAM_UNASSIGNED = _G.TEAM_UNASSIGNED
+local ipairs = _G.ipairs
+local pairs = _G.pairs
+local LocalPlayer = _G.LocalPlayer
+local hook = _G.hook
+local color_white = _G.color_white
+local istable = _G.istable
 
 
 local teams = _G.team.GetAllTeams()
 
 
-cache = {}
+cache = Utils.SafeGetTable(_G, "Uratrecom.Team.cache")
 META = {}
 
 
@@ -120,8 +140,8 @@ function META:GetNWScore()
 end
 
 
-function META:SetJoinable(isJoinable)
-    self.tbl.Joinable = isJoinable
+function META:SetJoinable(joinable)
+    self.tbl.Joinable = joinable
 end
 
 
@@ -165,41 +185,48 @@ function META:GetNWSelectableClasses()
 end
 
 
-function META:GetValues()
-    return self.tbl.Values
+function META:SetProperties(properties)
+    self.tbl.Properties = properties
 end
 
 
-function META:SetValue(key, value)
-    self.tbl.Values[key] = value
+function META:GetProperties()
+    return self.tbl.Properties
 end
 
 
-function META:GetValue(key)
-    return self.tbl.Values[key]
+function META:SetProperty(key, value)
+    self.tbl.Properties[key] = value
 end
 
 
-function META:SetNWValue(key, value)
+function META:GetProperty(key)
+    return self.tbl.Properties[key]
+end
+
+
+function META:SetNWProperty(key, value)
     SetGlobalVar("Team." .. tostring(self.index) .. "." .. key, value)
 end
 
 
-function META:GetNWValue(key)
+function META:GetNWProperty(key)
     return GetGlobalVar("Team." .. tostring(self.index) .. "." .. key)
 end
 
 
-function META:SetNWValues()
+function META:SetNWPropertyKeys()
     Utils.SetGlobalVarArray(
-        "Team." .. tostring(self.index) .. ".Values",
-        table.GetKeys(self:GetValues())
+        "Team." .. tostring(self.index) .. ".Properties",
+        table.GetKeys(self:GetProperties())
     )
 end
 
 
-function META:GetNWValues()
-    return Utils.GetGlobalVarArray("Team." .. tostring(self.index) .. ".Values")
+function META:GetNWPropertyKeys()
+    return Utils.GetGlobalVarArray(
+        "Team." .. tostring(self.index) .. ".Properties"
+    )
 end
 
 
@@ -217,16 +244,24 @@ function META:Restore()
 end
 
 
+function META:Copy(teamIndex)
+    self:SafeReplaceTable(teams[teamIndex])
+end
+
+
+function META:Clone(teamIndex)
+    teams[teamIndex] = table.Copy(self.tbl)
+
+    return __call(teamIndex)
+end
+
+
 function META:Default()
     self:SetName("Unnamed")
     self:SetColor(color_white)
     self:SetScore(0)
     self:SetJoinable(true)
     self:SetSelectableClasses({})
-
-    if self:GetAutoShare() then
-        self:AddToShare()
-    end
 end
 
 
@@ -257,32 +292,31 @@ function META:Initialize()
 end
 
 
-function META:Share(ply)
+function META:Share(player)
     if CLIENT then
-        ply = LocalPlayer()
+        player = LocalPlayer()
     end
 
-    
-    if hook.Run("TeamMenu_CanShareTeam", self, ply) == false then
+
+    if hook.Run("TeamMenu_CanShareTeam", self, player) == false then
         return
     end
 
 
     net.Start("TeamMenu_Share")
     net.WriteInt(self.index, 32)
-    net.WriteTable(self.tbl)
-    net.WriteBool(not self:IsValid())
 
 
-    if SERVER and ply then
-        net.Send(ply)
-        return
+    if CLIENT then
+        net.WriteTable(self.tbl)
     end
 
 
+    net.WriteBool(not self:IsValid())
+
+
     if SERVER then
-        net.Broadcast()
-        return
+        return player and net.Send(player) or net.Broadcast()
     end
 
 
@@ -297,12 +331,8 @@ function META:Pull()
     self:SetJoinable(self:GetNWJoinable())
     self:SetSelectableClasses(self:GetNWSelectableClasses())
 
-
-    local keys = self:GetNWValues()
-
-
-    for _, key in pairs(keys) do
-        self:SetValue(key, self:GetNWValue(key))
+    for _, key in ipairs(self:GetNWPropertyKeys()) do
+        self:SetProperty(key, self:GetNWProperty(key))
     end
 end
 
@@ -315,12 +345,12 @@ function META:Commit()
     self:SetNWSelectableClasses(self:GetSelectableClasses())
 
 
-    for key, value in pairs(self:GetValues()) do
-        self:SetNWValue(key, value)
+    for key, value in pairs(self:GetProperties()) do
+        self:SetNWProperty(key, value)
     end
 
 
-    self:SetNWCustomKeys()
+    self:SetNWPropertyKeys()
 end
 
 
@@ -508,12 +538,7 @@ META.IsValid = META.Valid
 
 
 function __call(teamIndex)
-    if not Utils.CheckArguments(teamIndex) then
-        return
-    end
-
-
-    if Utils.IsPlayer(teamIndex) then
+    if type(teamIndex) == "player" then
         teamIndex = teamIndex:Team()
     end
 
@@ -531,24 +556,24 @@ function __call(teamIndex)
     end
 
 
-    if teamIndex == nil then
-        local minIndex = Utils.table.MinNumberKey(teams)
-        local maxIndex = Utils.table.MaxNumberKey(teams)
+    if index == nil then
+        local minIndex = Utils.Table.MinNumberKey(teams)
+        local maxIndex = Utils.Table.MaxNumberKey(teams)
 
 
         for i = minIndex, maxIndex do
-            if not teams[i] then
-                teamIndex = i
+            if teams[i] == nil then
+                index = i
                 break
             end
         end
 
 
-        teamIndex = teamIndex == nil and maxIndex+1 or teamIndex
+        index = index == nil and maxIndex + 1 or index
     end
 
 
-    teams[teamIndex] = teamTable or {
+    teamTable = Utils.SafeGetTableValue(teams, teamIndex, {
         Name = "Unnamed",
         Color = color_white,
         Score = 0,
@@ -556,19 +581,19 @@ function __call(teamIndex)
         SelectableClasses = {},
         SpawnPointTable = {},
         SpawnPoints = {}
-    }
+    })
 
 
-    if teams[teamIndex].Values == nil then
-        teams[teamIndex].Values = {}
-    end
+    Utils.SafeGetTable(teamTable, "Properties")
 
 
     local self = setmetatable({
         index = teamIndex,
-        tbl = teams[teamIndex],
-        autoShare = false
-    }, TEAM)
+        tbl = teamTable
+    }, META)
+
+
+    self:Initialize()
 
 
     cache[teamIndex] = self
@@ -578,37 +603,35 @@ function __call(teamIndex)
 end
 
 
-Utils.AddArguments(TeamMenu.Team, {
-    { name = "teamIndex", required = false, type = { "number", "Player" } }
-})
+New = __call
 
 
-net.Receive("TeamMenu_Join", function(_, ply)
-    if not ply then
+net.Receive("TeamMenu_Join", function(_, player)
+    if player == nil then
         return
     end
 
 
     local teamIndex = net.ReadInt(32)
-    local team = TeamMenu.Team(teamIndex)
+    local team = __call(teamIndex)
 
 
-    if not ply:IsAdmin() and not team:GetJoinable() then
+    if not player:IsAdmin() and not team:GetJoinable() then
         return
     end
 
 
-    team:Join(ply)
+    team:Join(player)
 
 
     net.Start("TeamMenu_OnJoin")
     net.WriteInt(teamIndex,  32)
-    net.Send(ply)
+    net.Send(player)
 end)
 
 
-net.Receive("TeamMenu_OnJoin", function(_, ply)
-    if ply then
+net.Receive("TeamMenu_OnJoin", function(_, player)
+    if player ~= nil then
         return
     end
 
@@ -616,48 +639,58 @@ net.Receive("TeamMenu_OnJoin", function(_, ply)
     local teamIndex = net.ReadInt(32)
 
 
-    hook.Run("TeamMenu_OnPlayerJoinTeam", _M(teamIndex), LocalPlayer())
+    hook.Run("TeamMenu_OnPlayerJoinTeam", __call(teamIndex), LocalPlayer())
 end)
 
 
-net.Receive("TeamMenu_Share", function(_, ply)
-    local teamIndex = net.ReadInt(32)
-    local teamTable = net.ReadTable()
-    local isRemoved = net.ReadBool()
-    local team = _M(teamIndex)
+net.Receive("TeamMenu_Share", function(_, player)
+    if player then
+        local teamIndex = net.ReadInt(32)
+        local teamTable = net.ReadTable()
+        local isRemoved = net.ReadBool()
 
 
-    if ply and not ply:IsAdmin() then
-        return
-    end
-
-
-    if isRemoved then
-        team:Remove()
-
-        if CLIENT and team:HasPlayer(LocalPlayer()) then
-            team:Leave()
+        if not player:IsAdmin() then
+            return
         end
-    end
 
 
-    team:SafeReplaceTable(teamTable)
+        local team = __call(teamIndex)
 
 
-    hook.Run("TeamMenu_TeamUpdated", team, isRemoved)
-
-
-    if ply then
+        team:SafeReplaceTable(teamTable)
         team:Commit()
-        team:Share()
+
+
+        if isRemoved then
+            team:Remove()
+        end
+
+
+        net.Start("TeamMenu_Share")
+        net.WriteInt(teamIndex, 32)
+        net.WriteBool(isRemoved)
+        net.Broadcast()
+    else
+        local teamIndex = net.ReadInt(32)
+        local isRemoved = net.ReadBool()
+        local team = __call(teamIndex)
+
+
+        team:Pull()
+
+
+        if isRemoved then
+            team:Remove()
+        end
     end
 end)
 
 
 if SERVER then
-    hook.Add("PlayerInitialSpawn", "TeamMenu_SetUpTeams", function(ply)
-        for teamIndex in pairs(teams) do
-            TeamMenu.Team(teamIndex):Share(ply)
+    hook.Add("PlayerInitialSpawn", "TeamMenu_SetUpTeams", function(player)
+        for teamIndex in ipairs(teams) do
+            __call(teamIndex):Share(player)
         end
     end)
 end
