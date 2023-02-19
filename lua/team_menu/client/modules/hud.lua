@@ -169,25 +169,25 @@ function DrawEntityRelationship(player, entity)
 
     surface.SetDrawColor(relationshipColor)
     surface.DrawRect(
-        x - self.labelWidth / 2,
+        x - label.width / 2,
         y + 78,
-        self.labelWidth,
+        label.width,
         textHeight
     )
 
 
     surface.SetTextPos(x - textWidth / 2, y - textHeight / 2 + 85)
-    surface.SetTextColor(self.labelTextColor)
+    surface.SetTextColor(label.foreground)
     surface.DrawText(relationshipText)
 
 
     if not seeEntity then
         if ConVars.GetBool("hud_animate_label") then
-            self.labelWidth = Lerp(0.10, self.labelWidth, 0)
-            self.labelTextColor.a = Lerp(0.10, self.labelTextColor.a, 0)
+            label.width = Lerp(0.10, label.width, 0)
+            label.foreground.a = Lerp(0.10, label.foreground.a, 0)
         else
-            self.labelWidth = 0
-            self.labelTextColor.a = 0
+            label.width = 0
+            label.foreground.a = 0
         end
 
         return
@@ -195,11 +195,11 @@ function DrawEntityRelationship(player, entity)
 
 
     if ConVars.GetBool("hud_animate_label") then
-        self.labelWidth = Lerp(0.10, self.labelWidth, textWidth + 10)
-        self.labelTextColor.a = Lerp(0.10, self.labelTextColor.a, 255)
+        label.width = Lerp(0.10, label.width, textWidth + 10)
+        label.foreground.a = Lerp(0.10, label.foreground.a, 255)
     else
-        self.labelWidth = textWidth + 10
-        self.labelTextColor.a = 255
+        label.width = textWidth + 10
+        label.foreground.a = 255
     end
 end
 
@@ -253,8 +253,8 @@ function DrawPlayerTeam(player)
         6,
         25,
         ScrH() - 100,
-        self.boxWidth,
-        self.boxHeight,
+        box.width,
+        box.height,
         Color(0, 0, 0, 100)
     )
 

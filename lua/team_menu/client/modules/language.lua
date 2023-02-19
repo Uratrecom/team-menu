@@ -15,7 +15,7 @@ local table = _G.table
 local hook = _G.hook
 
 
-languages = Utils.SafeGetTableValue(_G, "Uratrecom.Language.languages", {
+languages = Utils.Table.GetValue(_G, "Uratrecom.Language.languages", {
     bg = "Bulgarian",
     cs = "Czech",
     da = "Danish",
@@ -51,12 +51,7 @@ languages = Utils.SafeGetTableValue(_G, "Uratrecom.Language.languages", {
 })
 
 
-cache = Utils.GetSafeTable(_G, "Uratrecom.Language.cache")
-
-
-function GetGameLanguage()
-    return GetConVar("gmod_language"):GetString()
-end
+cache = Utils.Table.GetValue(_G, "Uratrecom.Language.cache", {})
 
 
 function SetCurrentLanguage(language)
@@ -162,8 +157,8 @@ function GetPhrase(phrase, language)
     end
 
 
-    local languagePhrase = Utils.SafeGetTable(cache, language)[phrase]
-    local englishPhrase = Utils.SafeGetTable(cache, "en")[phrase]
+    local languagePhrase = Utils.Table.GetValue(cache, language, {})[phrase]
+    local englishPhrase = Utils.Table.GetValue(cache, "en", {})[phrase]
 
 
     if languagePhrase ~= nil then
@@ -185,11 +180,14 @@ function CacheFile(filename)
 
     for _, language in ipairs(tbl) do
         table.Merge(
-            Utils.SafeGetTable(cache, language),
+            Utils.Table.GetValue(cache, language, {}),
             ParseFile(filename, language)
         )
     end
 end
+
+
+CacheFile("team_menu.properties")
 
 
 hook.Add("InitPostEntity", "TeamMenu_LoadLocalization", function()

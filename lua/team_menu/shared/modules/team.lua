@@ -29,13 +29,17 @@ local LocalPlayer = _G.LocalPlayer
 local hook = _G.hook
 local color_white = _G.color_white
 local istable = _G.istable
+local type = _G.type
 
 
 local teams = _G.team.GetAllTeams()
 
 
-cache = Utils.SafeGetTable(_G, "Uratrecom.Team.cache")
+cache = Utils.Table.GetValue(_G, "Uratrecom.Team.cache", {})
+
+
 META = {}
+META.__index = META
 
 
 if SERVER then
@@ -573,7 +577,7 @@ function __call(teamIndex)
     end
 
 
-    teamTable = Utils.SafeGetTableValue(teams, teamIndex, {
+    teamTable = Utils.Table.GetValue(teams, teamIndex, {
         Name = "Unnamed",
         Color = color_white,
         Score = 0,
@@ -584,7 +588,7 @@ function __call(teamIndex)
     })
 
 
-    Utils.SafeGetTable(teamTable, "Properties")
+    Utils.Table.GetValue(teamTable, "Properties", {})
 
 
     local self = setmetatable({

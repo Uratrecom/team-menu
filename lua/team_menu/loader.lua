@@ -545,6 +545,9 @@ function moduleMeta.Module(moduleAlias)
     end
 
 
+    setmetatable(moduleTable, moduleMeta)
+
+
     moduleTable._M = moduleTable._M or moduleTable
     moduleTable._MODULE = moduleTable._M
     moduleTable._NAME = moduleTable._NAME or moduleAlias

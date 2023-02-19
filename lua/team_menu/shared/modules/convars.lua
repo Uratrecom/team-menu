@@ -1,7 +1,7 @@
 Module("TeamMenu.ConVars")
 
 
-local Language = Require("TeamMenu.Language")
+local Language = CLIENT and Require("TeamMenu.Language") or nil
 
 
 local CreateConVar = _G.CreateConVar
@@ -44,7 +44,7 @@ local function ConVar(name, default, min, max)
         name,
         default,
         flags,
-        GetConVarDescription(name),
+        CLIENT and GetConVarDescription(name) or "",
         min,
         max
     )
@@ -65,7 +65,7 @@ local function ClientConVar(name, default, min, max)
         default,
         true,
         true,
-        GetConVarDescription(name),
+        CLIENT and GetConVarDescription(name) or "",
         min,
         max
     )
