@@ -1,7 +1,7 @@
 Module("TeamMenu.ConVars")
 
 
-local Language = CLIENT and Require("TeamMenu.Language") or nil
+local Language = Require("TeamMenu.Language")
 
 
 local CreateConVar = _G.CreateConVar
@@ -18,6 +18,7 @@ local flags = _G.bit.bor(
 
 convars = {}
 categories = {}
+hidden = {}
 
 
 local category = nil
@@ -28,23 +29,28 @@ local function Category(name)
 end
 
 
+local hide = nil
+
+
+local function Hide(enabled)
+    hide = enabled
+end
+
+
 function GetConVarDescription(name, lang)
     return Language.GetPhrase(
-        "team_menu.convars." .. name .. "description",
-        lang or "en"
+        "team_menu.convars." .. name .. ".description",
+        lang
     )
 end
 
 
-local function ConVar(name, default, min, max)
-    name = "team_menu_" .. name
-    
-
+function ConVar(name, default, min, max)
     convars[name] = CreateConVar(
-        name,
+        "team_menu_" .. name,
         default,
         flags,
-        CLIENT and GetConVarDescription(name) or "",
+        GetConVarDescription(name, "en"),
         min,
         max
     )
@@ -53,19 +59,21 @@ local function ConVar(name, default, min, max)
     if category ~= nil then
         categories[name] = category
     end
+
+
+    if hide then
+        hidden[name] = true
+    end
 end
 
 
-local function ClientConVar(name, default, min, max)
-    name = "team_menu_" .. name
-
-
+function ClientConVar(name, default, min, max)
     convars[name] = CreateClientConVar(
-        name,
+        "team_menu_" .. name,
         default,
         true,
         true,
-        CLIENT and GetConVarDescription(name) or "",
+        GetConVarDescription(name, "en"),
         min,
         max
     )
@@ -73,12 +81,17 @@ local function ClientConVar(name, default, min, max)
 
     if category ~= nil then
         categories[name] = category
+    end
+
+
+    if hide then
+        hidden[name] = true
     end
 end
 
 
 function GetConVar(name)
-    return convars["team_menu_" .. name]
+    return convars[name]
 end
 
 
@@ -128,6 +141,7 @@ end
 
 
 Category("server")
+Hide(false)
 ConVar("friendly_fire", "0", 0, 1)
 ConVar("allow_create_team", "0", 0, 1)
 ConVar("autosave", "0", 0, 1)
@@ -135,6 +149,7 @@ ConVar("autosave_time", "300", 0, 86400)
 
 
 Category("hud")
+Hide(false)
 ClientConVar("hud_show_unknown_label", "1", 0, 1)
 ClientConVar("hud_show_enemy_label", "1", 0, 1)
 ClientConVar("hud_show_friend_label", "1", 0, 1)
@@ -157,8 +172,17 @@ ClientConVar("hud_enemy_color_blue", "86", 0, 255)
 
 
 Category("language")
+Hide(false)
 ClientConVar("language", "auto")
+ClientConVar("raw_language", "0", 0, 1)
+
+
+Category(nil)
+Hide(true)
+ConVar("sv_language", "auto")
+ConVar("sv_raw_language", "0", 0, 1)
 
 
 Category("debug")
+Hide(false)
 ClientConVar("debug", "0")

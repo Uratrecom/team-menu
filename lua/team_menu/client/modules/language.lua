@@ -13,6 +13,53 @@ local pairs = _G.pairs
 local ipairs = _G.ipairs
 local table = _G.table
 local hook = _G.hook
+local CreateConVar = _G.CreateConVar
+local CreateClientConVar = _G.CreateClientConVar
+
+
+if SERVER then
+    local flags = _G.bit.bor(
+        _G.FCVAR_ARCHIVE,
+        _G.FCVAR_GAMEDLL,
+        _G.FCVAR_REPLICATED
+    )
+
+
+    languageConVar = CreateConVar(
+        "team_menu_sv_language",
+        "auto",
+        flags,
+        ""
+    )
+
+
+    rawLanguageConVar = CreateConVar(
+        "team_menu_sv_raw_language",
+        "0",
+        flags,
+        "",
+        0,
+        1
+    )
+else
+    languageConVar = CreateClientConVar(
+        "team_menu_language",
+        "auto",
+        true,
+        true,
+        ""
+    )
+
+    rawLanguageConVar = CreateClientConVar(
+        "team_menu_raw_language",
+        "0",
+        true,
+        true,
+        "",
+        0,
+        1
+    )
+end
 
 
 languages = Utils.Table.GetValue(_G, "Uratrecom.Language.languages", {
@@ -54,13 +101,18 @@ languages = Utils.Table.GetValue(_G, "Uratrecom.Language.languages", {
 cache = Utils.Table.GetValue(_G, "Uratrecom.Language.cache", {})
 
 
+function GetGameLanguage()
+    return GetConVar("gmod_language"):GetString()
+end
+
+
 function SetCurrentLanguage(language)
-    GetConVar("team_menu_language"):SetString(language)
+    languageConVar:SetString(language)
 end
 
 
 function GetCurrentLanguage()
-    return GetConVar("team_menu_language"):GetString()
+    return languageConVar:GetString()
 end
 
 
@@ -141,11 +193,16 @@ end
 
 
 function GetPhrase(phrase, language)
+    if rawLanguageConVar:GetBool() then
+        return phrase
+    end
+
+
     local currentLanguage = GetCurrentLanguage()
 
 
     if currentLanguage == "auto" and language == nil or language == "auto" then
-        return _G.language.GetPhrase(phrase)
+        return GetPhrase(phrase, GetGameLanguage())
     end
 
 
