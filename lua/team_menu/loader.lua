@@ -566,6 +566,18 @@ function moduleMeta.ModuleExists(moduleName)
 end
 
 
+local initializers = {}
+
+
+hook.Add("InitPostEntity", "TeamMenu_Initializer", function()
+    for _, func in ipairs(initializers) do
+        func()
+    end
+
+    table.Empty(initializers)
+end)
+
+
 function moduleMeta.Require(moduleName, ...)
     local moduleFile = TryLoad(moduleName)
 
@@ -593,6 +605,27 @@ function moduleMeta.Require(moduleName, ...)
 
     local result = mod(...)
     local moduleTable = getfenv(mod)
+
+
+    if isfunction(moduleTable.Initialize) then
+        local old_Initialize = moduleTable.Initialize
+
+
+        moduleTable.Initialize = function()
+            if moduleTable.__INITIALIZED then
+                return
+            end
+
+
+            moduleTable.__INITIALIZED = true
+
+
+            old_Initialize()
+        end
+
+
+        table.insert(initializers, moduleTable.Initialize)
+    end
 
 
 	if result == nil and moduleTable._NAME ~= nil then

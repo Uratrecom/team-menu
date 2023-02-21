@@ -247,6 +247,7 @@ end
 CacheFile("team_menu.properties")
 
 
-hook.Add("InitPostEntity", "TeamMenu_LoadLocalization", function()
+function Initialize()
+    print("Initialize!", __INITIALIZED)
     CacheFile("team_menu.properties")
-end)
+end
