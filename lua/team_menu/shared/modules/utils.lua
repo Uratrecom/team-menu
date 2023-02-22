@@ -34,3 +34,12 @@ function GetGlobalVarArray(index)
 
     return tbl
 end
+
+
+function Accessor(tbl, key, name, type)
+    if type == "number" then
+        tbl["Set" .. name] = function()
+            
+        end
+    end
+end

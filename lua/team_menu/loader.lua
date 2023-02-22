@@ -607,24 +607,11 @@ function moduleMeta.Require(moduleName, ...)
     local moduleTable = getfenv(mod)
 
 
-    if isfunction(moduleTable.Initialize) then
-        local old_Initialize = moduleTable.Initialize
-
-
-        moduleTable.Initialize = function()
-            if moduleTable.__INITIALIZED then
-                return
-            end
-
-
+    if isfunction(moduleTable.__Initialize) then
+        table.insert(initializers, function()
             moduleTable.__INITIALIZED = true
-
-
-            old_Initialize()
-        end
-
-
-        table.insert(initializers, moduleTable.Initialize)
+            moduleTable.__Initialize()
+        end)
     end
 
 
