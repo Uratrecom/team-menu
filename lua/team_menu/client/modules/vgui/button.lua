@@ -12,7 +12,6 @@ local ICON_ALIGN = TeamMenu.ICON_ALIGN
 PANEL = {}
 
 
-
 Utils.Accessor(PANEL, "useDefaultPaint", "UseDefaultPaint", "boolean")
 
 
@@ -60,15 +59,6 @@ function PANEL:Init()
 
 
     self:InvalidateLayout()
-
-
-    self.foreground = {}
-    self.background = {}
-    self.outline = {}
-    self.round = {}
-    self.icon = {}
-    self.icon.offset = {}
-    self.icon.size = {}
 
 
     self:SetFont("DermaDefault")
@@ -244,7 +234,7 @@ function PANEL:DoDoubleClick() end
 function PANEL:PerformLayout(width, height)
     self.label:SetTall(height)
 end
-
+ 
 
 function PANEL:OnMousePressed(button)
     if self:IsHovered() and button == MOUSE_LEFT then
@@ -334,7 +324,7 @@ function PANEL:Paint(width, height)
             width - outlineSize,
             height - outlineSize
         )
-
+ 
 
         draw.RoundedBoxEx(
             radius,
