@@ -6,7 +6,8 @@ local vgui = _G.vgui
 
 local Utils = Require("TeamMenu.Utils")
 local Theme = Require("TeamMenu.Theme")
-local ICON_ALIGN = TeamMenu.ICON_ALIGN
+local Enums = Require("TeamMenu.Enums")
+local ConVars = Require("TeamMenu.ConVars")
 
 
 PANEL = {}
@@ -430,4 +431,4 @@ function PANEL:Paint(width, height)
 end
 
 
-vgui.Register("TeamMenu_Button", PANEL, "Panel")
+vgui.Register("TeamMenu_Button", PANEL, "DButton")

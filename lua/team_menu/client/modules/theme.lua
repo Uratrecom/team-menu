@@ -1,13 +1,27 @@
 Module("TeamMenu.Theme")
 
 
+local ConVars = Require("TeamMenu.ConVars")
+local Utils = Require("TeamMenu.Utils")
+
+
 local Color = _G.Color
 local color_black = _G.color_black
 local color_white = _G.color_white
+local color_transparent = _G.color_transparent
 
 
-style = {}
-defaults = {}
+themes = {}
+
+
+function GetCurrentTheme()
+    return ConVars.GetString("theme")
+end
+
+
+function IsDefaultTheme()
+    return GetCurrentTheme() == "default"
+end
 
 
 function Set(key, value)
@@ -34,6 +48,22 @@ end
 function Reset(key)
     Set(key, GetDefault(key))
 end
+
+
+function GetTheme(name)
+    return themes[name]
+end
+
+
+function Theme(name)
+    themes[name] = Utils.Table.GetValue(themes, name, {
+        style = {},
+        defaults = {}
+    })
+end
+
+
+Theme("default")
 
 
 SetDefault("window.title", Color(255, 255, 255))

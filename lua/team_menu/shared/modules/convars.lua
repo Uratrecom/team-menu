@@ -186,3 +186,8 @@ ConVar("sv_raw_language", "0", 0, 1)
 Category("debug")
 Hide(false)
 ClientConVar("debug", "0")
+
+
+Category("theme")
+Hide(false)
+ClientConVar("theme", "default")
