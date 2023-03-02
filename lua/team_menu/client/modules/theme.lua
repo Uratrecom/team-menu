@@ -12,41 +12,55 @@ local color_transparent = _G.color_transparent
 
 
 themes = {}
+META = {}
 
 
-function GetCurrentTheme()
+META.__index = META
+
+
+function META:Set(key, value)
+    self.style[key] = value
+end
+
+
+function META:Get(key)
+    return self.style[key]
+end
+
+
+function META:SetDefault(key, value)
+    self.style[key] = value
+    self.defaults[key] = value
+end
+
+
+function META:GetDefault(key)
+    return self.defaults[key]
+end
+
+
+function META:Reset(key)
+    self:Set(key, self:GetDefault(key))
+end
+
+
+function Theme(name)
+    local self = setmetatable({
+        name = name,
+        style = {},
+        defaults = {}
+    }, META)
+
+
+    themes[name] = self
+
+
+    return self
+end
+
+
+function GetCurrentThemeString()
     return ConVars.GetString("theme")
-end
-
-
-function IsDefaultTheme()
-    return GetCurrentTheme() == "default"
-end
-
-
-function Set(key, value)
-    style[key] = value
-end
-
-
-function Get(key)
-    return style[key]
-end
-
-
-function SetDefault(key, value)
-    style[key] = value
-    defaults[key] = value
-end
-
-
-function GetDefault(key)
-    return defaults[key]
-end
-
-
-function Reset(key)
-    Set(key, GetDefault(key))
 end
 
 
@@ -55,11 +69,38 @@ function GetTheme(name)
 end
 
 
-function Theme(name)
-    themes[name] = Utils.Table.GetValue(themes, name, {
-        style = {},
-        defaults = {}
-    })
+function GetCurrentTheme()
+    return GetTheme(GetCurrentThemeString())
+end
+
+
+function IsDefaultTheme()
+    return GetCurrentThemeString() == "default"
+end
+
+
+function Set(...)
+    GetCurrentTheme():Set(...)
+end
+
+
+function Get(...)
+    return GetCurrentTheme():Get(...)
+end
+
+
+function SetDefault(...)
+    GetCurrentTheme():SetDefault(...)
+end
+
+
+function GetDefault(...)
+    return GetCurrentTheme():GetDefault(...)
+end
+
+
+function Reset(...)
+    GetCurrentTheme():Reset(...)
 end
 
 
