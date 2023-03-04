@@ -117,10 +117,10 @@ SetDefault("button.font", "DermaDefault")
 
 
 SetDefault("button.outline", color_transparent)
-SetDefault("button.outline.size", 0)
 SetDefault("button.outline.hovered", color_transparent)
 SetDefault("button.outline.pressed", color_transparent)
 SetDefault("button.outline.disabled", color_transparent)
+SetDefault("button.outline.size", 0)
 
 
 SetDefault("button.foreground", color_white)
