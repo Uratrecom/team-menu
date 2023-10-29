@@ -1,6 +1,9 @@
 local Utils = TeamMenu.Utils
 
 
+TeamMenu.Team.New()
+
+
 Utils.draw = Utils.draw or Utils.ReferenceTable(draw)
 
 
