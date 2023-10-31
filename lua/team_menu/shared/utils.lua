@@ -47,3 +47,13 @@ end
 function TableMaxIndex(tbl)
     return math.max(unpack(TableIndices(tbl)))
 end
+
+
+function IsPlayer(value)
+    return IsEntity(value) and value:IsPlayer()
+end
+
+
+function IsValidPlayer(value)
+    return IsPlayer(value) and IsValid(value)
+end

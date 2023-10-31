@@ -95,6 +95,11 @@ function RemoveAllTeams()
 end
 
 
+function TeamExists(team_index)
+    return Teams[team_index] ~= nil
+end
+
+
 AccessorFunc(META, "Index", "Index", FORCE_NUMBER)
 AccessorFunc(META, "Data", "Data")
 
@@ -259,6 +264,10 @@ end
 
 
 function META:SetNWPropertyKeys()
+    if CLIENT then
+        return
+    end
+
     Utils.SetGlobalVarArray(
         "Team." .. tostring(self.Index) .. ".PropertyKeys",
         table.GetKeys(self:GetProperties())
@@ -273,6 +282,30 @@ function META:GetNWPropertyKeys()
 end
 
 
+function META:SetRemoved(is_removed)
+    self.Data.Removed = is_removed
+end
+
+
+function META:IsRemoved()
+    return self.Data.Removed
+end
+
+
+function META:SetNWRemoved(is_removed)
+    if CLIENT then
+        return
+    end
+
+    SetGlobal2Bool("Team." .. tostring(self.Index) .. "Removed", is_removed)
+end
+
+
+function META:GetNWRemoved()
+    return GetGlobal2Bool("Team." .. tostring(self.Index) .. "Removed")
+end
+
+
 function META:Restore()
     if istable(teams[self.Index]) and teams[self.Index] ~= self.Table then
         ErrorNoHaltWithStack(("Overwriting the existing team (%s -> %s)"):format(
@@ -281,13 +314,13 @@ function META:Restore()
         ))
     end
 
-    teams[self.Index] = self.Table
+    Teams[self.Index] = self.Data
     Cache[self.Index] = self
 end
 
 
 function META:Clone(team_index)
-    teams[team_index] = table.Copy(self.Data)
+    Teams[team_index] = table.Copy(self.Data)
 
     return New(team_index)
 end
@@ -330,34 +363,31 @@ function META:InitializeFields()
 end
 
 
-function META:Share(player)
-    if SERVER then
-        
-    end
-
-    if CLIENT then
-        player = LocalPlayer()
-    end
-
+function META:Share(ply)
     net.Start("Uratrecom_TeamMenu_Share")
     net.WriteInt(self.Index, 32)
+    net.WriteBool(not self:IsValid())
+    net.WriteTable(self.Data)
 
     if CLIENT then
-        net.WriteTable(self.tbl)
+        net.SendToServer()
+
+        return 
     end
 
-    net.WriteBool(not self:IsValid())
+    if Utils.IsPlayer(ply) then
+        net.Send(ply)
 
-    if SERVER then
-        return player and net.Send(player) or net.Broadcast()
+        return
     end
 
-    net.SendToServer()
+    net.Broadcast()
 end
 
 
 function META:Pull()
     self:SetName(self:GetNWName())
+    self:SetRemoved(self:GetNWRemoved())
     self:SetColor(self:GetNWColor())
     self:SetScore(self:GetNWScore())
     self:SetJoinable(self:GetNWJoinable())
@@ -371,6 +401,7 @@ end
 
 function META:Commit()
     self:SetNWName(self:GetName())
+    self:SetNWRemoved(self:IsRemoved())
     self:SetNWColor(self:GetColor())
     self:SetNWScore(self:GetScore())
     self:SetNWJoinable(self:GetJoinable())
@@ -385,32 +416,30 @@ end
 
 
 function META:Remove()
-    if istable(teams[self.Index]) and teams[self.Index] ~= self.Table then
+    if istable(Teams[self.Index]) and Teams[self.Index] ~= self.Data then
         ErrorNoHaltWithStack(("Removing an existing team (%s -> nil)"):format(
-            teams[index].Name
+            Teams[index].Name
         ))
     end
 
     Cache[self.Index] = nil
-    teams[self.Index] = nil
-
-    hook.Run("Uratrecom_TeamMenu_TeamRemoved", self)
+    Teams[self.Index] = nil
 end
 
-    
+
 function META:SafeReplaceTable(tbl)
     table.Empty(self.Data)
     table.Merge(self.Data, tbl)
 end
 
 
-function META:HasPlayer(player)
-    return player:Team() == self.Index
+function META:HasPlayer(ply)
+    return ply:Team() == self.Index
 end
 
 
 function META:HasLocalPlayer()
-    return self:HasPlayer(LocalPlayer())
+    return CLIENT and self:HasPlayer(LocalPlayer())
 end
 
 
@@ -436,14 +465,14 @@ function META:IsDefaultTeam()
 end
 
 
-function META:Join(player)
+function META:Join(ply)
     if SERVER then
-        player:SetTeam(self.Index)
+        if Utils.IsPlayer(ply) then
+            ply:SetTeam(self.Index)
+        end
 
         return
     end
-
-    player = LocalPlayer()
 
     net.Start("Uratrecom_TeamMenu_Join")
     net.WriteInt(self.Index, 32)
@@ -457,8 +486,6 @@ function META:Leave(player)
 
         return
     end
-
-    player = LocalPlayer()
 
     New(TEAM_UNASSIGNED):Join()
 end
@@ -544,7 +571,7 @@ end
 META.IsValid = META.Valid
 
 
-net.Receive("TeamMenu_Join", function(_, player)
+net.Receive("TeamMenu_Join", function(_, ply)
     if CLIENT then
         return
     end
@@ -552,14 +579,14 @@ net.Receive("TeamMenu_Join", function(_, player)
     local team_index = net.ReadInt(32)
     local team_instance = New(team_index)
 
-    if not player:IsAdmin() and not team_instance:GetJoinable() then
+    if not ply:IsAdmin() and not team_instance:GetJoinable() then
         return
     end
 
     team_instance:Join(player)
 
     net.Start("TeamMenu_OnJoin")
-    net.WriteInt(teamIndex,  32)
+    net.WriteInt(team_index,  32)
     net.Send(player)
 end)
 
@@ -569,46 +596,46 @@ net.Receive("TeamMenu_OnJoin", function(_, player)
         return
     end
 
-    local teamIndex = net.ReadInt(32)
+    local team_index = net.ReadInt(32)
 
-    hook.Run("TeamMenu_OnPlayerJoinTeam", __call(teamIndex), LocalPlayer())
+    hook.Run("TeamMenu_OnPlayerJoinTeam", New(team_index), LocalPlayer())
 end)
 
 
 net.Receive("TeamMenu_Share", function(_, player)
-    if player then
-        local teamIndex = net.ReadInt(32)
-        local teamTable = net.ReadTable()
-        local isRemoved = net.ReadBool()
+    if SERVER then
+        local team_index = net.ReadInt(32)
+        local team_is_removed = net.ReadBool()
+        local team_data = net.ReadTable()
 
-        if not player:IsAdmin() then
+        if not Handler.Process("") then
             return
         end
 
-        local team = New(teamIndex)
+        local team_instance = New(team_index)
 
-        team:SafeReplaceTable(teamTable)
-        team:Commit()
+        team_instance:SafeReplaceTable(team_data)
+        team_instance:Commit()
 
-        if isRemoved then
-            team:Remove()
+        if team_is_removed then
+            team_instance:Remove()
         end
 
         net.Start("TeamMenu_Share")
-        net.WriteInt(teamIndex, 32)
-        net.WriteBool(isRemoved)
+        net.WriteInt(team_index, 32)
+        net.WriteBool(team_is_removed)
         net.Broadcast()
 
         return
     end
-    
+
     local team_index = net.ReadInt(32)
-    local is_removed = net.ReadBool()
+    local team_is_removed = net.ReadBool()
     local team_instance = New(team_index)
 
     team_instance:Pull()
 
-    if is_removed then
+    if team_is_removed then
         team_instance:Remove()
     end
 end)

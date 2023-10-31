@@ -167,6 +167,7 @@ CreateServerConVar("friendly_fire", "0", 0, 1)
 CreateServerConVar("allow_create_team", "0", 0, 1)
 CreateServerConVar("autosave", "0", 0, 1)
 CreateServerConVar("autosave_time", "300", 0, 86400)
+CreateServerConVar("handler", "AdminOnly")
 
 CreateClientConVar("hud_show_unknown_label", "1", 0, 1)
 CreateClientConVar("hud_show_enemy_label", "1", 0, 1)
@@ -177,6 +178,8 @@ CreateClientConVar("hud_show_no_team", "1", 0, 1)
 CreateClientConVar("hud_show_my_team", "1", 0, 1)
 CreateClientConVar("hud_show_player_team", "1", 0, 1)
 CreateClientConVar("hud_show_entity_team", "1", 0, 1)
+
+-- May be removed later
 CreateClientConVar("hud_show_entity_relationship", "1", 0, 1)
 CreateClientConVar("hud_unknown_color_red", "197", 0, 255)
 CreateClientConVar("hud_unknown_color_green", "198", 0, 255)

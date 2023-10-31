@@ -294,6 +294,11 @@ concommand.Add("team_menu", function()
 end)
 
 
+if engine.ActiveGamemode() != "sandbox" then
+    return
+end
+
+
 local icon = nil
 
 
