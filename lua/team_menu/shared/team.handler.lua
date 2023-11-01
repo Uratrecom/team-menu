@@ -14,18 +14,18 @@ function RegisterHandler(id, data)
 end
 
 
-function SetHandlerId(id)
+function SetActiveHandler(id)
     ConVars.SetString("handler", id)
 end
 
 
-function GetHandlerId()
+function GetActiveHandler()
     return ConVars.GetString("handler")
 end
 
 
 function Process(command, ...)
-    local handler_data = handlers[GetHandlerId()]
+    local handler_data = handlers[GetActiveHandler()]
     local handler_command = handler_data and handler_data[command] or nil
 
     if handler_command == nil then
@@ -41,16 +41,16 @@ RegisterHandler("Sandbox", {
         return true
     end,
 
-    LeaveTeam = function(ply, current_team)
-        return true
-    end,
-
     CreateTeam = function(ply, team_instance)
         return true
     end,
 
+    UpdateTeam = function(ply, team_instance)
+        return true
+    end,
+
     RemoveTeam = function(ply, team_instance)
-        return false
+        return true
     end
 })
 
@@ -60,11 +60,11 @@ RegisterHandler("Strict", {
         return false
     end,
 
-    LeaveTeam = function(ply, current_team)
+    CreateTeam = function(ply, team_instance)
         return false
     end,
 
-    CreateTeam = function(ply, team_instance)
+    UpdateTeam = function(ply, team_instance)
         return false
     end,
 
@@ -79,11 +79,11 @@ RegisterHandler("OnlyAdmin", {
         return ply:IsAdmin()
     end,
 
-    LeaveTeam = function(ply, current_team)
+    CreateTeam = function(ply, team_instance)
         return ply:IsAdmin()
     end,
 
-    CreateTeam = function(ply, team_instance)
+    UpdateTeam = function(ply, team_instance)
         return ply:IsAdmin()
     end,
 

@@ -1,4 +1,4 @@
-Uratrecom.Module("Uratrecom.TeamMenu.Utils", Uratrecom.TeamMenu)
+Uratrecom.Module("Uratrecom.TeamMenu.Utils")
 
 
 function SetGlobalVarArray(index, array)
@@ -13,10 +13,6 @@ end
 function GetGlobalVarArray(index)
     local tbl = {}
     local length = GetGlobal2Int(index .. ".length")
-
-    if length == 0 then
-        ErrorNoHaltWithStack("Empty array? Bug?")
-    end
 
     for i = 1, length do
         table.insert(tbl, GetGlobal2Var(i .. "." .. tostring(i)))
@@ -46,6 +42,19 @@ end
 
 function TableMaxIndex(tbl)
     return math.max(unpack(TableIndices(tbl)))
+end
+
+
+function TableDifferent(primary_table, secondary_table)
+    local tbl = {}
+
+    for key, value in pairs(secondary_table) do
+        if primary_table[key] ~= value then
+            tbl[key] = value
+        end
+    end
+
+    return tbl
 end
 
 

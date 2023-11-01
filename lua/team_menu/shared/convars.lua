@@ -19,7 +19,7 @@ local client_flags = bit.bor(
 function CreateServerConVar(name, default, min, max)
     local global_name = "team_menu_sv_" .. name
 
-    Convars[name] = CreateConVar(global_name, default, server_flags, "", min, max)
+    ConVars[name] = CreateConVar(global_name, default, server_flags, "", min, max)
 end
 
 
@@ -30,7 +30,7 @@ function CreateClientConVar(name, default, min, max)
 
     local global_name = "team_menu_cl_" .. name
 
-    Convars[name] = CreateConVar(global_name, default, client_flags, "", min, max)
+    ConVars[name] = CreateConVar(global_name, default, client_flags, "", min, max)
 end
 
 

@@ -2,7 +2,7 @@ Uratrecom = Uratrecom or {}
 Uratrecom.TeamMenu = Uratrecom.TeamMenu or {}
 
 
-Uratrecom.GetFiles = Uratrecom.GetFiles or function(directory, path, extension)
+function Uratrecom.GetFiles(directory, path, extension)
 	local stack = { directory }
 	local tbl = {}
 
@@ -27,7 +27,7 @@ Uratrecom.GetFiles = Uratrecom.GetFiles or function(directory, path, extension)
 end
 
 
-Uratrecom.Set = Uratrecom.Set or function(tbl, path, value)
+function Uratrecom.Set(tbl, path, value)
     local keys = path:Split(".")
 
     for index, key in ipairs(keys) do
@@ -48,7 +48,11 @@ Uratrecom.Set = Uratrecom.Set or function(tbl, path, value)
 end
 
 
-Uratrecom.Get = Uratrecom.Get or function(tbl, path, default, set)
+function Uratrecom.Get(tbl, path, default, set)
+	if isnumber(path) then
+		path = tostring(path)
+	end
+
     local keys = path:Split(".")
 	local value = tbl
 
@@ -80,10 +84,10 @@ Uratrecom.Get = Uratrecom.Get or function(tbl, path, default, set)
 end
 
 
-Uratrecom.Module = Uratrecom.Module or function(name, ...)
+function Uratrecom.Module(name, ...)
 	local index_tables = { ... }
-	local module_table = Uratrecom.Get(_G, module_name, {}, true)
-	local metatable = getmetatable(module_table)
+	local module_table = Uratrecom.Get(_G, name, {}, true)
+	local metatable = getmetatable(module_table) or {}
 
 	function metatable:__index(key)
 		if key == "self" then
@@ -242,23 +246,23 @@ end
 -- end, "9u", 0)
 -- end
 
--- for _, file_path in Uratrecom.GetFiles("team_menu/shared/", "LUA", ".lua") do
--- 	include(file_path)
--- 	AddCSLuaFile(file_path)
--- end
+for _, file_path in pairs(Uratrecom.GetFiles("team_menu/shared", "LUA", ".lua")) do
+	include(file_path)
+	AddCSLuaFile(file_path)
+end
 
 
--- for _, file_path in Uratrecom.GetFiles("team_menu/server/", "LUA", ".lua") do
--- 	if SERVER then
--- 		include(file_path)
--- 	end
--- end
+for _, file_path in pairs(Uratrecom.GetFiles("team_menu/server", "LUA", ".lua")) do
+	if SERVER then
+		include(file_path)
+	end
+end
 
 
--- for _, file_path in Uratrecom.GetFiles("team_menu/client/", "LUA", ".lua") do
--- 	AddCSLuaFile(file_path)
+for _, file_path in pairs(Uratrecom.GetFiles("team_menu/client", "LUA", ".lua")) do
+	AddCSLuaFile(file_path)
 
--- 	if CLIENT then
--- 		include(file_path)
--- 	end
--- end
+	if CLIENT then
+		include(file_path)
+	end
+end

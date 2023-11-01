@@ -39,11 +39,11 @@ end
 
 
 function New(team_index)
-    if type(team_index) == "player" then
+    if Utils.IsPlayer(team_index) then
         team_index = team_index:Team()
     end
 
-    if team_index == nil or not isnumber(team_index) then
+    if not isnumber(team_index) then
         local min_index = Utils.TableMinIndex(Teams)
         local max_index = Utils.TableMaxIndex(Teams)
 
@@ -65,8 +65,10 @@ function New(team_index)
             Teams[team_index] = team_cache.Table
         end
 
-        return team_cache
+        return team_cache, false
     end
+
+    local initial_creation = not team.Valid(team_index)
 
     team_data = Uratrecom.Get(Teams, team_index, {}, true)
 
@@ -79,7 +81,7 @@ function New(team_index)
 
     Cache[team_index] = self
 
-    return self
+    return self, initial_creation
 end
 
 
@@ -88,20 +90,32 @@ function RemoveTeam(team_index)
 end
 
 
-function RemoveAllTeams()
+function RemoveTeams()
     for team_index in ipairs(teams) do
         RemoveTeam(team_index)
     end
 end
 
 
-function TeamExists(team_index)
-    return Teams[team_index] ~= nil
+function GetLocalTeam()
+    if SERVER then
+        return
+    end
+
+    return New(LocalPlayer())
 end
 
 
 AccessorFunc(META, "Index", "Index", FORCE_NUMBER)
 AccessorFunc(META, "Data", "Data")
+
+
+function META:__tostring()
+    print(self.Index)
+    PrintTable(self.Data)
+
+    return ""
+end
 
 
 function META:SetName(name)
@@ -124,7 +138,7 @@ end
 
 
 function META:GetNWName()
-    return GetGlobal2String("Team." .. tostring(self.Index) .. ".Name", "Unnamed")
+    return GetGlobal2String("Team." .. tostring(self.Index) .. ".Name")
 end
 
 
@@ -195,8 +209,8 @@ function META:SetNWJoinable(is_joinable)
 end
 
 
-function META:IsNWJoinable()
-    return SetGlobal2Bool("Team." .. tostring(self.Index) .. ".Joinable")
+function META:GetNWJoinable()
+    return GetGlobal2Bool("Team." .. tostring(self.Index) .. ".Joinable")
 end
 
 
@@ -306,19 +320,6 @@ function META:GetNWRemoved()
 end
 
 
-function META:Restore()
-    if istable(teams[self.Index]) and teams[self.Index] ~= self.Table then
-        ErrorNoHaltWithStack(("Overwriting the existing team (%s -> %s)"):format(
-            teams[self.Index].Name,
-            self:GetName()
-        ))
-    end
-
-    Teams[self.Index] = self.Data
-    Cache[self.Index] = self
-end
-
-
 function META:Clone(team_index)
     Teams[team_index] = table.Copy(self.Data)
 
@@ -349,7 +350,7 @@ function META:InitializeFields()
         self:SetScore(0)
     end
 
-    if self:GetJoinable() == nil then
+    if self:IsJoinable() == nil then
         self:SetJoinable(true)
     end
 
@@ -360,28 +361,40 @@ function META:InitializeFields()
     if self:GetProperties() == nil then
         self:SetProperties({})
     end
+
+    if self:IsRemoved() == nil then
+        self:SetRemoved(false)
+    end
 end
 
 
 function META:Share(ply)
-    net.Start("Uratrecom_TeamMenu_Share")
-    net.WriteInt(self.Index, 32)
-    net.WriteBool(not self:IsValid())
-    net.WriteTable(self.Data)
+    -- if not Handler.Process("UpdateTeam", ply, self) then
+    --     return
+    -- end
 
-    if CLIENT then
-        net.SendToServer()
+    if SERVER then
+        self:Commit()
 
-        return 
-    end
+        print(self:GetNWName())
 
-    if Utils.IsPlayer(ply) then
-        net.Send(ply)
+        net.Start("Uratrecom_TeamMenu_Share")
+        net.WriteInt(self.Index, 32)
+
+        if Utils.IsPlayer(ply) then
+            net.Send(ply)
+        else
+            net.Broadcast()
+        end
 
         return
     end
 
-    net.Broadcast()
+    net.Start("Uratrecom_TeamMenu_Share")
+    net.WriteInt(self.Index, 32)
+    net.WriteBool(self:IsRemoved())
+    net.WriteTable(self.Data)
+    net.SendToServer()
 end
 
 
@@ -400,11 +413,15 @@ end
 
 
 function META:Commit()
+    if CLIENT then
+        return
+    end
+
     self:SetNWName(self:GetName())
     self:SetNWRemoved(self:IsRemoved())
     self:SetNWColor(self:GetColor())
     self:SetNWScore(self:GetScore())
-    self:SetNWJoinable(self:GetJoinable())
+    self:SetNWJoinable(self:IsJoinable())
     self:SetNWSelectableClasses(self:GetSelectableClasses())
 
     for key, value in pairs(self:GetProperties()) do
@@ -415,19 +432,25 @@ function META:Commit()
 end
 
 
-function META:Remove()
-    if istable(Teams[self.Index]) and Teams[self.Index] ~= self.Data then
-        ErrorNoHaltWithStack(("Removing an existing team (%s -> nil)"):format(
-            Teams[index].Name
-        ))
-    end
+function META:Restore()
+    Teams[self.Index] = self.Data
+    Cache[self.Index] = self
 
-    Cache[self.Index] = nil
-    Teams[self.Index] = nil
+    self:SetRemoved(false)
+    self:SetNWRemoved(false)
 end
 
 
-function META:SafeReplaceTable(tbl)
+function META:Remove()
+    Cache[self.Index] = nil
+    Teams[self.Index] = nil
+
+    self:SetRemoved(true)
+    self:SetNWRemoved(true)
+end
+
+
+function META:ReplaceTable(tbl)
     table.Empty(self.Data)
     table.Merge(self.Data, tbl)
 end
@@ -439,7 +462,11 @@ end
 
 
 function META:HasLocalPlayer()
-    return CLIENT and self:HasPlayer(LocalPlayer())
+    if not CLIENT then
+        return false
+    end
+
+    return self:HasPlayer(LocalPlayer())
 end
 
 
@@ -471,6 +498,10 @@ function META:Join(ply)
             ply:SetTeam(self.Index)
         end
 
+        return
+    end
+
+    if not Handler.Process("ChangeTeam", LocalPlayer(), GetLocalTeam(), self) then
         return
     end
 
@@ -571,80 +602,78 @@ end
 META.IsValid = META.Valid
 
 
-net.Receive("TeamMenu_Join", function(_, ply)
+net.Receive("Uratrecom_TeamMenu_Join", function(_, ply)
     if CLIENT then
         return
     end
 
     local team_index = net.ReadInt(32)
+
+    if not team.Valid(team_index) then
+        return
+    end
+
     local team_instance = New(team_index)
 
-    if not ply:IsAdmin() and not team_instance:GetJoinable() then
+    if not Handler.Process("ChangeTeam", ply, New(ply), team_instance) then
         return
     end
 
     team_instance:Join(player)
-
-    net.Start("TeamMenu_OnJoin")
-    net.WriteInt(team_index,  32)
-    net.Send(player)
 end)
 
 
-net.Receive("TeamMenu_OnJoin", function(_, player)
-    if CLIENT then
-        return
-    end
-
-    local team_index = net.ReadInt(32)
-
-    hook.Run("TeamMenu_OnPlayerJoinTeam", New(team_index), LocalPlayer())
-end)
-
-
-net.Receive("TeamMenu_Share", function(_, player)
+net.Receive("Uratrecom_TeamMenu_Share", function(_, ply)
     if SERVER then
         local team_index = net.ReadInt(32)
         local team_is_removed = net.ReadBool()
         local team_data = net.ReadTable()
-
-        if not Handler.Process("") then
-            return
-        end
-
-        local team_instance = New(team_index)
-
-        team_instance:SafeReplaceTable(team_data)
-        team_instance:Commit()
+        local team_instance, team_initial_creation = New(team_index)
 
         if team_is_removed then
             team_instance:Remove()
+        else
+            team_instance:ReplaceTable(team_data)
+            team_instance:Commit()    
         end
 
-        net.Start("TeamMenu_Share")
+        net.Start("Uratrecom_TeamMenu_Share")
         net.WriteInt(team_index, 32)
-        net.WriteBool(team_is_removed)
         net.Broadcast()
 
         return
     end
 
+    print("\n\n\nPULL")
+
     local team_index = net.ReadInt(32)
-    local team_is_removed = net.ReadBool()
     local team_instance = New(team_index)
 
-    team_instance:Pull()
-
-    if team_is_removed then
+    if team_instance:GetNWRemoved() then
         team_instance:Remove()
+
+        return
     end
+
+    print(team_instance)
+    team_instance:Pull()
+    print(team_instance)
 end)
 
 
 if SERVER then
-    hook.Add("PlayerInitialSpawn", "Uratrecom_TeamMenu_InitialShare", function(player)
-        for team_index in ipairs(teams) do
-            New(team_index):Share(player)
-        end
+    hook.Add("PlayerInitialSpawn", "Uratrecom_TeamMenu_InitialShare", function(ply)
+        -- for team_index in pairs(Teams) do
+        --     if isnumber(team_index) then
+        --         New(team_index):Share()
+        --     end
+        -- end
+    end)
+    hook.Add("PostGamemodeLoaded", "uyfyf", function(ply)
+        local t = New(88)
+
+        t:SetName("Gays")
+        t:SetScore(-9999)
+        t:Share()
     end)
 end
