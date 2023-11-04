@@ -1,7 +1,8 @@
 Uratrecom.Module("Uratrecom.TeamMenu.ConVars", Uratrecom.TeamMenu)
 
 
-ConVars = {}
+AccessorFunc(self, "ConVars", "ConVars")
+SetConVars({})
 
 
 local server_flags = bit.bor(
@@ -17,30 +18,44 @@ local client_flags = bit.bor(
 
 
 function CreateServerConVar(name, default, min, max)
-    local global_name = "team_menu_sv_" .. name
+    local global_name = PrefixConVar("sv_" .. name)
 
-    ConVars[name] = CreateConVar(global_name, default, server_flags, "", min, max)
+    ConVars[global_name] = CreateConVar(global_name, default, server_flags, "", min, max)
 end
 
 
 function CreateClientConVar(name, default, min, max)
-    if not CLIENT then
-        return
-    end
+    name = PrefixConVar("cl_" .. name)
 
-    local global_name = "team_menu_cl_" .. name
-
-    ConVars[name] = CreateConVar(global_name, default, client_flags, "", min, max)
-end
-
-
-function GetConVars()
-    return ConVars
+    ConVars[name] = CreateConVar(name, default, client_flags, "", min, max)
 end
 
 
 function GetConVar(name)
-    return ConVars[name]
+    return ConVars[PrefixConVar(name)]
+end
+
+
+function GerPlayerInfo(ply, name)
+    name = PrefixConVar("cl_" .. name)
+
+    local value = ply:GetInfo(name)
+    local client_convar = ConVars[name]
+
+    if value == nil then
+        return
+    end
+
+    if client_convar and client_convar:GetMin() == 0 and client_convar:GetMax() == 1 then
+        return tobool(value)
+    end
+
+    return tonumber(value) ~= nil and tonumber(value) or value
+end
+
+
+function AddChangeCallback(name, callback)
+    cvars.AddChangeCallback(PrefixConVar(name), callback)
 end
 
 
@@ -167,7 +182,6 @@ CreateServerConVar("friendly_fire", "0", 0, 1)
 CreateServerConVar("allow_create_team", "0", 0, 1)
 CreateServerConVar("autosave", "0", 0, 1)
 CreateServerConVar("autosave_time", "300", 0, 86400)
-CreateServerConVar("handler", "AdminOnly")
 
 CreateClientConVar("hud_show_unknown_label", "1", 0, 1)
 CreateClientConVar("hud_show_enemy_label", "1", 0, 1)

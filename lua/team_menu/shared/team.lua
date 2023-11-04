@@ -8,91 +8,73 @@ if SERVER then
 end
 
 
-Teams = team.GetAllTeams()
-Cache = Cache or {}
+AccessorFunc(self, "Teams", "Teams")
+SetTeams(team.GetAllTeams())
 
+AccessorFunc(self, "Cache", "Cache")
+SetCache({})
 
-META = META or {}
+AccessorFunc(self, "META", "META")
+SetMETA({})
+
 META.__index = META
 
 
-do
-    local metatable = getmetatable(Teams) or {}
-    local old_handler = metatable.__newindex
-
-    function metatable:__newindex(team_index, team_data)
-        if isfunction(old_handler) then
-            old_handler(self, team_index, team_data)
-        else
-            rawset(self, team_index, team_data)
-        end
-
-        if team_data == nil or Cache[team_index] ~= nil then
-            return
-        end
-
-        hook.Run("Uratrecom_TeamMenu_TeamCreated", New(team_index))
+function New(index)
+    if Utils.IsPlayer(index) then
+        index = index:Team()
     end
 
-    setmetatable(Teams, metatable)
-end
-
-
-function New(team_index)
-    if Utils.IsPlayer(team_index) then
-        team_index = team_index:Team()
-    end
-
-    if not isnumber(team_index) then
+    if not isnumber(index) then
         local min_index = Utils.TableMinIndex(Teams)
         local max_index = Utils.TableMaxIndex(Teams)
 
-        for index = min_index, max_index do
-            if Teams[index] == nil then
-                team_index = index
+        for i = min_index, max_index do
+            if Teams[i] == nil then
+                index = i
                 break
             end
         end
 
-        team_index = team_index == nil and max_index + 1 or team_index
+        index = index == nil and max_index + 1 or index
     end
 
-    local team_data = Teams[team_index]
-    local team_cache = Cache[team_index]
+    local data = Teams[index]
+    local cache = Cache[index]
 
-    if team_cache then
-        if team_cache.Table ~= team_data then
-            Teams[team_index] = team_cache.Table
+    if cache then
+        if cache.Data ~= data then
+            Teams[index] = cache.Data
         end
 
-        return team_cache, false
+        return cache, false
     end
 
-    local initial_creation = not team.Valid(team_index)
+    local initial_creation = not team.Valid(index)
 
-    team_data = Uratrecom.Get(Teams, team_index, {}, true)
+    data = Uratrecom.Get(Teams, index, {}, true)
 
-    local self = setmetatable({
-        Index = team_index,
-        Data = team_data
-    }, META)
-
+    local self = setmetatable({}, META)
+    self:SetIndex(index)
+    self:SetData(data)
     self:InitializeFields()
 
-    Cache[team_index] = self
+    Cache[index] = self
+
+    Events.TeamCreated(self)
 
     return self, initial_creation
 end
 
 
-function RemoveTeam(team_index)
-    New(team_index):Remove()
+function RemoveTeam(index)
+    New(index):Remove()
 end
 
 
 function RemoveTeams()
-    for team_index in ipairs(teams) do
-        RemoveTeam(team_index)
+    for index in ipairs(GetTeams()) do
+        RemoveTeam(index)
     end
 end
 
@@ -108,14 +90,6 @@ end
 
 AccessorFunc(META, "Index", "Index", FORCE_NUMBER)
 AccessorFunc(META, "Data", "Data")
-
-
-function META:__tostring()
-    print(self.Index)
-    PrintTable(self.Data)
-
-    return ""
-end
 
 
 function META:SetName(name)
@@ -320,13 +294,6 @@ function META:GetNWRemoved()
 end
 
 
-function META:Clone(team_index)
-    Teams[team_index] = table.Copy(self.Data)
-
-    return New(team_index)
-end
-
-
 function META:Default()
     self:SetName("Unnamed")
     self:SetColor(color_white)
@@ -369,14 +336,8 @@ end
 
 
 function META:Share(ply)
-    -- if not Handler.Process("UpdateTeam", ply, self) then
-    --     return
-    -- end
-
     if SERVER then
         self:Commit()
-
-        print(self:GetNWName())
 
         net.Start("Uratrecom_TeamMenu_Share")
         net.WriteInt(self.Index, 32)
@@ -387,6 +348,10 @@ function META:Share(ply)
             net.Broadcast()
         end
 
+        return
+    end
+
+    if not Events.CanUpdateTeam(LocalPlayer(), self) then
         return
     end
 
@@ -409,6 +374,8 @@ function META:Pull()
     for _, key in ipairs(self:GetNWPropertyKeys()) do
         self:SetProperty(key, self:GetNWProperty(key))
     end
+
+    Events.TeamUpdated(self, false)
 end
 
 
@@ -429,6 +396,8 @@ function META:Commit()
     end
 
     self:SetNWPropertyKeys()
+
+    Events.TeamUpdated(self, true)
 end
 
 
@@ -438,6 +407,8 @@ function META:Restore()
 
     self:SetRemoved(false)
     self:SetNWRemoved(false)
+
+    Events.TeamUpdated(self, tobool(SERVER))
 end
 
 
@@ -447,6 +418,8 @@ function META:Remove()
 
     self:SetRemoved(true)
     self:SetNWRemoved(true)
+
+    Events.TeamUpdated(self, tobool(SERVER))
 end
 
 
@@ -495,30 +468,51 @@ end
 function META:Join(ply)
     if SERVER then
         if Utils.IsPlayer(ply) then
+            local old_team = New(ply)
+
             ply:SetTeam(self.Index)
+
+            Events.TeamChanged(ply, old_team, self)
         end
 
         return
     end
 
-    if not Handler.Process("ChangeTeam", LocalPlayer(), GetLocalTeam(), self) then
+    if not Events.CanChangeTeam(LocalPlayer(), GetLocalTeam(), self) then
         return
     end
+
+    local old_team = GetLocalTeam()
 
     net.Start("Uratrecom_TeamMenu_Join")
     net.WriteInt(self.Index, 32)
     net.SendToServer()
+
+    Events.TeamChanged(LocalPlayer(), old_team, self)
 end
 
 
-function META:Leave(player)
+function META:Leave(ply)
     if SERVER then
-        player:SetTeam(TEAM_UNASSIGNED)
+        if not Events.CanLeaveTeam(ply, self) then
+            return
+        end
+
+        ply:SetTeam(TEAM_UNASSIGNED)
+
+        Events.LeaveTeam(ply)
+        Events.TeamChanged(ply, self, New(TEAM_UNASSIGNED))
 
         return
     end
 
+    if not Events.CanLeaveTeam(LocalPlayer(), self) then
+        return
+    end
+
     New(TEAM_UNASSIGNED):Join()
+
+    Events.LeaveTeam(LocalPlayer(), self)
 end
 
 
@@ -602,20 +596,20 @@ end
 META.IsValid = META.Valid
 
 
-net.Receive("Uratrecom_TeamMenu_Join", function(_, ply)
+net.Receive(PrefixId("Join"), function(_, ply)
     if CLIENT then
         return
     end
 
-    local team_index = net.ReadInt(32)
+    local index = net.ReadInt(32)
 
-    if not team.Valid(team_index) then
+    if not team.Valid(index) then
         return
     end
 
-    local team_instance = New(team_index)
+    local team_instance = New(index)
 
-    if not Handler.Process("ChangeTeam", ply, New(ply), team_instance) then
+    if not Events.CanChangeTeam(ply, New(ply), team_instance) then
         return
     end
 
@@ -623,57 +617,88 @@ net.Receive("Uratrecom_TeamMenu_Join", function(_, ply)
 end)
 
 
-net.Receive("Uratrecom_TeamMenu_Share", function(_, ply)
-    if SERVER then
-        local team_index = net.ReadInt(32)
-        local team_is_removed = net.ReadBool()
-        local team_data = net.ReadTable()
-        local team_instance, team_initial_creation = New(team_index)
+local teams_to_update = nil
 
-        if team_is_removed then
+
+if CLIENT then
+    teams_to_update = {}
+
+    hook.Add("InitPostEntity", PrefixId("UpdateTeams"), function()
+        for _, team_instance in ipairs(teams_to_update) do
+            if team_instance:GetNWRemoved() then
+                team_instance:Remove()
+            else
+                team_instance:Pull()
+            end
+        end
+    end)
+end
+
+
+net.Receive(PrefixId("Share"), function(_, ply)
+    if SERVER then
+        local index = net.ReadInt(32)
+        local is_removed = net.ReadBool()
+        local data = net.ReadTable()
+        local team_instance, initial_creation = New(index)
+
+        if initial_creation and not Events.CanCreateTeam(ply, team_instance) then
             team_instance:Remove()
-        else
-            team_instance:ReplaceTable(team_data)
-            team_instance:Commit()    
+
+            return
         end
 
-        net.Start("Uratrecom_TeamMenu_Share")
-        net.WriteInt(team_index, 32)
+        if not initial_creation and not Events.CanUpdateTeam(ply, team_instance) then
+            return
+        end
+
+        if is_removed then
+            team_instance:Remove()
+        else
+            team_instance:ReplaceTable(data)
+            team_instance:Commit()
+
+            Events.TeamUpdated(team_instance, true)
+        end
+
+        if initial_creation then
+            Events.TeamCreated(team_instance)
+        else
+            Events.TeamUpdated(team_instance)
+        end
+
+        net.Start(PrefixId("Share"))
+        net.WriteInt(index, 32)
         net.Broadcast()
 
         return
     end
 
-    print("\n\n\nPULL")
+    local index = net.ReadInt(32)
+    local team_instance = New(index)
 
-    local team_index = net.ReadInt(32)
-    local team_instance = New(team_index)
+    if LocalPlayer() == NULL then
+        table.insert(teams_to_update, team_instance)
+
+        return
+    end
 
     if team_instance:GetNWRemoved() then
         team_instance:Remove()
 
         return
-    end
+    end 
 
-    print(team_instance)
     team_instance:Pull()
-    print(team_instance)
 end)
 
 
 if SERVER then
-    hook.Add("PlayerInitialSpawn", "Uratrecom_TeamMenu_InitialShare", function(ply)
-        -- for team_index in pairs(Teams) do
-        --     if isnumber(team_index) then
-        --         New(team_index):Share()
-        --     end
-        -- end
-    end)
-    hook.Add("PostGamemodeLoaded", "uyfyf", function(ply)
-        local t = New(88)
-
-        t:SetName("Gays")
-        t:SetScore(-9999)
-        t:Share()
+    hook.Add("PlayerInitialSpawn", PrefixId("InitialShare"), function(ply)
+        for index in pairs(Teams) do
+            if isnumber(index) then
+                New(index):Share()
+            end
+        end
     end)
 end

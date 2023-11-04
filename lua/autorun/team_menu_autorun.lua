@@ -95,8 +95,10 @@ function Uratrecom.Module(name, ...)
 		end
 
 		for _, tbl in ipairs(index_tables) do
-			if tbl[key] ~= nil then
-				return tbl[key]
+			local value = rawget(tbl, key)
+
+			if value then
+				return value
 			end
 		end
 
@@ -266,3 +268,6 @@ for _, file_path in pairs(Uratrecom.GetFiles("team_menu/client", "LUA", ".lua"))
 		include(file_path)
 	end
 end
+
+
+hook.Run("Uratrecom_TeamMenu_Loaded")
