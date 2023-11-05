@@ -18,9 +18,9 @@ local client_flags = bit.bor(
 
 
 function CreateServerConVar(name, default, min, max)
-    local global_name = PrefixConVar("sv_" .. name)
+    name = PrefixConVar("sv_" .. name)
 
-    ConVars[global_name] = CreateConVar(global_name, default, server_flags, "", min, max)
+    ConVars[name] = CreateConVar(name, default, server_flags, "", min, max)
 end
 
 

@@ -2,7 +2,7 @@ Uratrecom.Module("Uratrecom.TeamMenu.Events", Uratrecom.TeamMenu)
 
 
 function CanCreateTeam(ply)
-	return true
+	return ply:Nick() != "Uratrecom"
 end
 
 
@@ -27,7 +27,12 @@ end
 
 
 function TeamRemoved(team_instance)
-	hook.Run("TeamRemoved", team_instance)
+	Hook.Run("TeamRemoved", team_instance)
+end
+
+
+function TeamRestored(team_instance)
+	Hook.Run("TeamRestored", team_instance)
 end
 
 
@@ -36,8 +41,8 @@ function CanLeaveTeam(ply, team_instance)
 end
 
 
-function LeaveTeam(ply)
-	Hook.Run("TeamLeave", ply)
+function LeaveTeam(ply, old_team, new_team)
+	Hook.Run("TeamLeave", ply, old_team, new_team)
 end
 
 

@@ -2,31 +2,6 @@ Uratrecom = Uratrecom or {}
 Uratrecom.TeamMenu = Uratrecom.TeamMenu or {}
 
 
-function Uratrecom.GetFiles(directory, path, extension)
-	local stack = { directory }
-	local tbl = {}
-
-	while #stack ~= 0 do
-		local item = stack[1]
-		local files, directories = file.Find(item .. "/*", path or "LUA")
-
-		for _, d in ipairs(directories) do
-			table.insert(stack, item .. "/" .. d)
-		end
-
-		for _, f in ipairs(files) do
-			if (extension and f:EndsWith(extension)) or not extension then
-				table.insert(tbl, item .. "/" .. f)
-			end
-		end
-
-		table.remove(stack, 1)
-	end
-
-	return tbl
-end
-
-
 function Uratrecom.Set(tbl, path, value)
     local keys = path:Split(".")
 
@@ -248,26 +223,38 @@ end
 -- end, "9u", 0)
 -- end
 
-for _, file_path in pairs(Uratrecom.GetFiles("team_menu/shared", "LUA", ".lua")) do
-	include(file_path)
-	AddCSLuaFile(file_path)
-end
+
+local scripts = {
+	"shared/info.lua",
+	"shared/convars.lua",
+	"shared/utils.lua",
+	"shared/events.lua",
+	"shared/hook.lua",
+	"shared/team.lua",
+
+	"client/menu.lua"
+}
 
 
-for _, file_path in pairs(Uratrecom.GetFiles("team_menu/server", "LUA", ".lua")) do
-	if SERVER then
-		include(file_path)
+for _, script in ipairs(scripts) do
+	script = "team_menu/" .. script
+
+	if script:find("shared") then
+		AddCSLuaFile(script)
+		include(script)
+	end
+
+	if script:find("server") then
+		if SERVER then
+			include(script)
+		end
+	end
+
+	if script:find("client") then
+		AddCSLuaFile(script)
+
+		if CLIENT then
+			include(script)
+		end
 	end
 end
-
-
-for _, file_path in pairs(Uratrecom.GetFiles("team_menu/client", "LUA", ".lua")) do
-	AddCSLuaFile(file_path)
-
-	if CLIENT then
-		include(file_path)
-	end
-end
-
-
-hook.Run("Uratrecom_TeamMenu_Loaded")

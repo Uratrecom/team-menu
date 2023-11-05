@@ -1,18 +1,14 @@
-Uratrecom.Module("Uratrecom.TeamMenu.Hook")
+Uratrecom.Module("Uratrecom.TeamMenu.Hook", Uratrecom.TeamMenu)
 
 
-Hooks = hook.GetTable()
-
-
-function GetHooks()
-	return Hooks
-end
+AccessorFunc(self, "Hooks", "Hooks")
+SetHooks(hook.GetTable())
 
 
 function Anonymous(event, callback)
 	local id = nil
 
-	while Hooks[id] ~= nil do
+	while Hooks[id] == nil do
 		id = tostring(SysTime()) .. tostring(math.random()) .. tostring(os.clock())
 	end
 

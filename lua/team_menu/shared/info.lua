@@ -1,8 +1,13 @@
 Uratrecom.Module("Uratrecom.TeamMenu")
 
 
+function GetName()
+	return "Team menu"
+end
+
+
 function GetVersion()
-	return "0.0.0"
+	return "0.5B"
 end
 
 
@@ -22,5 +27,5 @@ end
 
 
 function PrefixId(id)
-	return GetIdPrefix() .. "_" .. name
+	return GetIdPrefix() .. "_" .. id
 end

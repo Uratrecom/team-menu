@@ -2,22 +2,20 @@ Uratrecom.Module("Uratrecom.TeamMenu.Team", Uratrecom.TeamMenu)
 
 
 if SERVER then
-    util.AddNetworkString("Uratrecom_TeamMenu_Join")
-    util.AddNetworkString("Uratrecom_TeamMenu_Share")
-    util.AddNetworkString("Uratrecom_TeamMenu_OnJoin")
+    util.AddNetworkString(PrefixId("Join"))
+    util.AddNetworkString(PrefixId("Share"))
 end
 
 
+Teams = team.GetAllTeams()
 AccessorFunc(self, "Teams", "Teams")
-SetTeams(team.GetAllTeams())
 
+Cache = {}
 AccessorFunc(self, "Cache", "Cache")
-SetCache({})
 
-AccessorFunc(self, "META", "META")
-SetMETA({})
-
+META = {}
 META.__index = META
+AccessorFunc(self, "META", "META")
 
 
 function New(index)
@@ -61,8 +59,6 @@ function New(index)
 
     Cache[index] = self
 
-    Events.TeamCreated(self)
-
     return self, initial_creation
 end
 
@@ -85,6 +81,11 @@ function GetLocalTeam()
     end
 
     return New(LocalPlayer())
+end
+
+
+function META:__tostring()
+    return ("Team %i: %s"):format(self:GetIndex(), self:GetName())
 end
 
 
@@ -112,7 +113,7 @@ end
 
 
 function META:GetNWName()
-    return GetGlobal2String("Team." .. tostring(self.Index) .. ".Name")
+    return GetGlobal2String("Team." .. tostring(self.Index) .. ".Name", "Undefined")
 end
 
 
@@ -339,7 +340,7 @@ function META:Share(ply)
     if SERVER then
         self:Commit()
 
-        net.Start("Uratrecom_TeamMenu_Share")
+        net.Start(PrefixId("Share"))
         net.WriteInt(self.Index, 32)
 
         if Utils.IsPlayer(ply) then
@@ -351,11 +352,14 @@ function META:Share(ply)
         return
     end
 
-    if not Events.CanUpdateTeam(LocalPlayer(), self) then
+    if not Events.CanCreateTeam(LocalPlayer(), self) and
+       not Events.CanUpdateTeam(LocalPlayer(), self) and
+       (not Events.CanRemoveTeam(LocalPlayer(), self) and self:IsRemoved())
+    then
         return
     end
 
-    net.Start("Uratrecom_TeamMenu_Share")
+    net.Start(PrefixId("Share"))
     net.WriteInt(self.Index, 32)
     net.WriteBool(self:IsRemoved())
     net.WriteTable(self.Data)
@@ -408,18 +412,22 @@ function META:Restore()
     self:SetRemoved(false)
     self:SetNWRemoved(false)
 
-    Events.TeamUpdated(self, tobool(SERVER))
+    Events.TeamRestored(self)
 end
 
 
-function META:Remove()
+function META:Remove(silent)
     Cache[self.Index] = nil
     Teams[self.Index] = nil
 
     self:SetRemoved(true)
     self:SetNWRemoved(true)
 
-    Events.TeamUpdated(self, tobool(SERVER))
+    if silent then
+        return
+    end
+
+    Events.TeamRemoved(self)
 end
 
 
@@ -484,7 +492,7 @@ function META:Join(ply)
 
     local old_team = GetLocalTeam()
 
-    net.Start("Uratrecom_TeamMenu_Join")
+    net.Start(PrefixId("Join"))
     net.WriteInt(self.Index, 32)
     net.SendToServer()
 
@@ -498,10 +506,9 @@ function META:Leave(ply)
             return
         end
 
-        ply:SetTeam(TEAM_UNASSIGNED)
+        New(TEAM_UNASSIGNED):Join(ply)
 
-        Events.LeaveTeam(ply)
-        Events.TeamChanged(ply, self, New(TEAM_UNASSIGNED))
+        Events.LeaveTeam(ply, self, New(TEAM_UNASSIGNED))
 
         return
     end
@@ -512,7 +519,7 @@ function META:Leave(ply)
 
     New(TEAM_UNASSIGNED):Join()
 
-    Events.LeaveTeam(LocalPlayer(), self)
+    Events.LeaveTeam(LocalPlayer(), self, New(TEAM_UNASSIGNED))
 end
 
 
@@ -624,13 +631,20 @@ if CLIENT then
     teams_to_update = {}
 
     hook.Add("InitPostEntity", PrefixId("UpdateTeams"), function()
-        for _, team_instance in ipairs(teams_to_update) do
+        for _, data in ipairs(teams_to_update) do
+            local team_instance = data.instance
+            local initial_creation = data.initial_creation
+
             if team_instance:GetNWRemoved() then
                 team_instance:Remove()
             else
                 team_instance:Pull()
+
+                Events.TeamCreated(team_instance)
             end
         end
+
+        teams_to_update = nil
     end)
 end
 
@@ -643,7 +657,7 @@ net.Receive(PrefixId("Share"), function(_, ply)
         local team_instance, initial_creation = New(index)
 
         if initial_creation and not Events.CanCreateTeam(ply, team_instance) then
-            team_instance:Remove()
+            team_instance:Remove(true)
 
             return
         end
@@ -652,33 +666,38 @@ net.Receive(PrefixId("Share"), function(_, ply)
             return
         end
 
+        if not initial_creation and is_removed and not Events.CanRemoveTeam(ply, team_instance) then
+            return
+        end
+
         if is_removed then
             team_instance:Remove()
         else
             team_instance:ReplaceTable(data)
             team_instance:Commit()
-
-            Events.TeamUpdated(team_instance, true)
         end
 
-        if initial_creation then
+        if initial_creation and not is_removed then
             Events.TeamCreated(team_instance)
         else
-            Events.TeamUpdated(team_instance)
+            Events.TeamUpdated(team_instance, false)
         end
 
         net.Start(PrefixId("Share"))
         net.WriteInt(index, 32)
-        net.Broadcast()
+        net.SendOmit(ply)
 
         return
     end
 
     local index = net.ReadInt(32)
-    local team_instance = New(index)
+    local team_instance, initial_creation = New(index)
 
     if LocalPlayer() == NULL then
-        table.insert(teams_to_update, team_instance)
+        table.insert(teams_to_update, {
+            instance = team_instance,
+            initial_creation = initial_creation
+        })
 
         return
     end
@@ -687,9 +706,13 @@ net.Receive(PrefixId("Share"), function(_, ply)
         team_instance:Remove()
 
         return
-    end 
+    end
 
     team_instance:Pull()
+
+    if initial_creation then
+        Events.TeamCreated(team_instance)
+    end
 end)
 
 
@@ -700,5 +723,24 @@ if SERVER then
                 New(index):Share()
             end
         end
+    end)
+end
+
+
+Hook.Add("TeamCreated", "Debug", function(team_instance)
+    print(tostring(team_instance) .. " has been created")
+end)
+
+Hook.Add("TeamUpdated", "Debug", function(team_instance, is_network_change)
+    print(tostring(team_instance) .. " has been updated " .. tostring(is_network_change))
+end)
+
+
+if CLIENT then
+    hook.Add("InitPostEntity", "ojojojuig", function()
+        local t = New(2006)
+        t:SetName("G-ray")
+        t:SetScore(666)
+        t:Share()
     end)
 end
